@@ -415,7 +415,7 @@ export default {
         if (!this.enabled) {
           this.enabled = true
 
-          this.$emit('activated')
+          this.$emit('activated', this)
           this.$emit('update:active', true)
         }
 
@@ -1143,7 +1143,7 @@ export default {
       this.enabled = val
 
       if (val) {
-        this.$emit('activated')
+        this.$emit('activated', this)
       } else {
         this.$emit('deactivated')
       }
