@@ -1,3 +1,53 @@
+const cases = {
+  noAxisOverlapping: 'noAxisOverlapping',
+  XAxisProjectionOverlapping: 'XAxisOverlapping',
+  YAxisProjectionOverlapping: 'YAxisOverlapping',
+  elementOverlapping: 'elementOverlapping'
+}
+
+/**
+ *
+ *
+ * @param {TheElPosition} activeEl
+ * @param {TheElPosition} theRelatedEl
+ * @return {string}
+ */
+function computeOverlappingCase (activeEl, theRelatedEl) {
+  // 计算距离，三种情况
+  // 1. 两个元素在x，y轴上的投影没有重叠，只计算靠近的两条边的距离
+  // 2. 两个元素在X或y轴的投影上有重叠，但是两元素本身没有重叠，
+  // 若相对x有投影，要计算两个元素的垂直边的距离，若相对y有投影，要计算两元素水平边的距离
+  // 3. 两元素本身有重叠，计算两元素四个边各自相对应的距离
+  let theOverlappingCase = cases.noAxisOverlapping
+  if (!theRelatedEl || !activeEl) {
+    return null
+  }
+  // 判断情况
+  // X轴投影重叠
+  if (
+    computeOverlappingSeg(
+      [theRelatedEl.offsetLeft, theRelatedEl.offsetLeft + theRelatedEl.offsetWidth],
+      [activeEl.offsetLeft, activeEl.offsetLeft + activeEl.offsetWidth]
+    ) !== null
+  ) {
+    theOverlappingCase = cases.XAxisProjectionOverlapping
+  }
+  // Y轴投影重叠
+  if (
+    computeOverlappingSeg(
+      [theRelatedEl.offsetTop, theRelatedEl.offsetTop + theRelatedEl.offsetHeight],
+      [activeEl.offsetTop, activeEl.offsetTop + activeEl.offsetHeight]
+    ) !== null
+  ) {
+    if (theOverlappingCase === cases.noAxisOverlapping) {
+      theOverlappingCase = cases.YAxisProjectionOverlapping
+    } else {
+      theOverlappingCase = cases.elementOverlapping
+    }
+  }
+  return theOverlappingCase
+}
+
 /**
  * 计算两条线段重叠的部分，有重叠返回重叠线段，没有重叠返回null
  * @param {[number, number]} seg1
@@ -60,6 +110,13 @@ function LinesOfTwoRelatedEl () {
   return this
 }
 
+function GapLinesOfTwoRelatedEl () {
+  /**  @type {Line[]} */
+  this.gapVLine = []
+  /**  @type {Line[]} */
+  this.gapHLine = []
+}
+
 /**
  * 无投影重叠的计算
  *
@@ -67,8 +124,8 @@ function LinesOfTwoRelatedEl () {
  * @param {TheElPosition} theRelatedEl
  * @return {LinesOfTwoRelatedEl}
  */
-const genLinesForNoAxisOverlapping = (activeEl, theRelatedEl) => {
-  const lines = new LinesOfTwoRelatedEl()
+const genLinesForNoAxisOverlapping = (activeEl, theRelatedEl, specificLinesContainer) => {
+  const lines = specificLinesContainer || new LinesOfTwoRelatedEl()
   const ruleValue = {
     top: activeEl.offsetTop - (theRelatedEl.offsetTop + theRelatedEl.offsetHeight),
     bottom: activeEl.offsetTop + activeEl.offsetHeight - theRelatedEl.offsetTop,
@@ -136,8 +193,8 @@ const genLinesForNoAxisOverlapping = (activeEl, theRelatedEl) => {
  * @param {TheElPosition} theRelatedEl
  * @return {LinesOfTwoRelatedEl}
  */
-const genLinesForXAxisProjectionOverlapping = (activeEl, theRelatedEl) => {
-  const lines = new LinesOfTwoRelatedEl()
+const genLinesForXAxisProjectionOverlapping = (activeEl, theRelatedEl, specificLinesContainer) => {
+  const lines = specificLinesContainer || new LinesOfTwoRelatedEl()
   const overlappingSegment = computeOverlappingSeg([
     activeEl.offsetLeft, activeEl.offsetLeft + activeEl.offsetWidth
   ], [
@@ -211,8 +268,8 @@ const genLinesForXAxisProjectionOverlapping = (activeEl, theRelatedEl) => {
  * @param {TheElPosition} theRelatedEl
  * @return {LinesOfTwoRelatedEl}
  */
-const genLinesForYAxisProjectionOverlapping = (activeEl, theRelatedEl) => {
-  const lines = new LinesOfTwoRelatedEl()
+const genLinesForYAxisProjectionOverlapping = (activeEl, theRelatedEl, specificLinesContainer) => {
+  const lines = specificLinesContainer || new LinesOfTwoRelatedEl()
   const overlappingSegment = computeOverlappingSeg([
     activeEl.offsetTop, activeEl.offsetTop + activeEl.offsetHeight
   ], [
@@ -227,25 +284,25 @@ const genLinesForYAxisProjectionOverlapping = (activeEl, theRelatedEl) => {
   const isHorizontalLineFromLeft = Math.abs(ruleValue.left) < Math.abs(ruleValue.right)
   // 重叠部分的距离线
   if (Math.abs(isHorizontalLineFromLeft ? ruleValue.left : ruleValue.right) !== 0) {
-    lines.ruleHLine = [{
+    lines.ruleHLine = [new Line({
       top: overlappingSegment.reduce((all, num) => all + num, 0) / 2,
       left: isHorizontalLineFromLeft ? activeEl.offsetLeft - Math.abs(ruleValue.left) : activeEl.offsetLeft + activeEl.offsetWidth,
       lineLength: Math.abs(isHorizontalLineFromLeft ? ruleValue.left : ruleValue.right)
-    }]
+    })]
   }
   if (ruleValue.top !== 0) {
-    lines.ruleVLine.push({
+    lines.ruleVLine.push(new Line({
       top: ruleValue.top > 0 ? activeEl.offsetTop - ruleValue.top : theRelatedEl.offsetTop + ruleValue.top,
       left: ruleValue.top > 0 ? (activeEl.offsetLeft + activeEl.offsetWidth / 2) : (theRelatedEl.offsetLeft + theRelatedEl.offsetWidth / 2),
       lineLength: Math.abs(ruleValue.top)
-    })
+    }))
   }
   if (ruleValue.bottom !== 0) {
-    lines.ruleVLine.push({
+    lines.ruleVLine.push(new Line({
       top: ruleValue.bottom < 0 ? activeEl.offsetTop + activeEl.offsetHeight : theRelatedEl.offsetTop + theRelatedEl.offsetHeight,
       left: ruleValue.bottom < 0 ? (activeEl.offsetLeft + activeEl.offsetWidth / 2) : (theRelatedEl.offsetLeft + theRelatedEl.offsetWidth / 2),
       lineLength: Math.abs(ruleValue.bottom)
-    })
+    }))
   }
   lines.ruleVLine.forEach((ruleLine, lineIndex) => {
     const lineName = ['top', 'bottom'][lineIndex]
@@ -253,7 +310,7 @@ const genLinesForYAxisProjectionOverlapping = (activeEl, theRelatedEl) => {
       const lineLength = Math.abs(isHorizontalLineFromLeft ? ruleValue.left : ruleValue.right) + (
         (ruleValue.top > 0 ? activeEl.offsetWidth : theRelatedEl.offsetWidth) / 2
       )
-      lines.dashedHLine.push({
+      lines.dashedHLine.push(new Line({
         top: ruleLine.top,
         left: ruleValue.top > 0 ? (
           isHorizontalLineFromLeft ? ruleLine.left - lineLength : ruleLine.left
@@ -261,13 +318,13 @@ const genLinesForYAxisProjectionOverlapping = (activeEl, theRelatedEl) => {
           isHorizontalLineFromLeft ? ruleLine.left : ruleLine.left - lineLength
         ),
         lineLength
-      })
+      }))
     }
     if (lineName === 'bottom') {
       const lineLength = Math.abs(isHorizontalLineFromLeft ? ruleValue.left : ruleValue.right) + (
         (ruleValue.bottom > 0 ? theRelatedEl.offsetWidth : activeEl.offsetWidth) / 2
       )
-      lines.dashedHLine.push({
+      lines.dashedHLine.push(new Line({
         top: ruleLine.top + ruleLine.lineLength,
         left: ruleValue.bottom > 0 ? (
           isHorizontalLineFromLeft ? ruleLine.left : ruleLine.left - lineLength
@@ -275,25 +332,203 @@ const genLinesForYAxisProjectionOverlapping = (activeEl, theRelatedEl) => {
           isHorizontalLineFromLeft ? ruleLine.left - lineLength : ruleLine.left
         ),
         lineLength
-      })
+      }))
     }
   })
   return lines
 }
 
+/**
+ * 计算水平间距线，两个元素必须仅有y轴投影
+ *
+ * @param {TheElPosition} activeEl
+ * @param {TheElPosition} theRelatedEl
+ * @return {GapLinesOfTwoRelatedEl}
+ */
+const genGapLinesForHorizontalDir = (activeEl, theRelatedEl, specificLinesContainer) => {
+  /** @constant {GapLinesOfTwoRelatedEl} lines */
+  const lines = specificLinesContainer || new GapLinesOfTwoRelatedEl()
+  const overlappingCase = computeOverlappingCase(activeEl, theRelatedEl)
+  if (overlappingCase !== cases.YAxisProjectionOverlapping) {
+    return lines
+  }
+  // 用数组的顺序表示两元素在布局中的左右关系，0下标的元素在左边，1下标的元素在右边
+  const twoEL = [activeEl, theRelatedEl]
+  if (activeEl.offsetLeft > theRelatedEl.offsetLeft) {
+    twoEL.reverse()
+  }
+  const overlappingSegment = computeOverlappingSeg(
+    [activeEl.offsetTop, activeEl.offsetTop + activeEl.offsetHeight],
+    [theRelatedEl.offsetTop, theRelatedEl.offsetTop + theRelatedEl.offsetHeight]
+  )
+  lines.gapHLine = [new Line({
+    left: twoEL[0].offsetLeft + twoEL[0].offsetWidth,
+    top: overlappingSegment.reduce((all, num) => all + num, 0) / 2,
+    lineLength: twoEL[1].offsetLeft - (twoEL[0].offsetLeft + twoEL[0].offsetWidth)
+  })]
+  return lines
+}
+
+/**
+ * 计算垂直间距线
+ *
+ * @param {TheElPosition} activeEl
+ * @param {TheElPosition} theRelatedEl
+ * @return {GapLinesOfTwoRelatedEl}
+ */
+const genGapLinesForVerticalDir = (activeEl, theRelatedEl, specificLinesContainer) => {
+  /** @constant {GapLinesOfTwoRelatedEl} lines */
+  const lines = specificLinesContainer || new GapLinesOfTwoRelatedEl()
+  const overlappingCase = computeOverlappingCase(activeEl, theRelatedEl)
+  if (overlappingCase !== cases.XAxisProjectionOverlapping) {
+    return lines
+  }
+  // 用数组的顺序表示两元素在布局中的上下关系，0下标的元素在上，1下标的元素在下边
+  const twoEL = [activeEl, theRelatedEl]
+  if (activeEl.offsetTop > theRelatedEl.offsetTop) {
+    twoEL.reverse()
+  }
+  const overlappingSegment = computeOverlappingSeg(
+    [activeEl.offsetLeft, activeEl.offsetLeft + activeEl.offsetWidth],
+    [theRelatedEl.offsetLeft, theRelatedEl.offsetLeft + theRelatedEl.offsetWidth]
+  )
+  lines.gapVLine = [new Line({
+    top: twoEL[0].offsetTop + twoEL[0].offsetHeight,
+    left: overlappingSegment.reduce((all, num) => all + num, 0) / 2,
+    lineLength: twoEL[1].offsetTop - (twoEL[0].offsetTop + twoEL[0].offsetHeight)
+  })]
+  return lines
+}
+
+/**
+ * 获取元素的位置
+ * @param {HTMLElement} theSrcEl
+ * @returns {TheElPosition}
+ */
+const getElPosition = (theSrcEl) => {
+  const leftTop = theSrcEl.style.transform ? (theSrcEl.style.transform.match(/^translate\((\d+)px,\s(\d+)px\)$/).slice(1) || [0, 0]) : [theSrcEl.offsetLeft, theSrcEl.offsetTop]
+  const theSrcElPosition = {
+    offsetHeight: theSrcEl.offsetHeight,
+    offsetWidth: theSrcEl.offsetWidth,
+    offsetLeft: parseInt(leftTop[0]),
+    offsetTop: parseInt(leftTop[1])
+  }
+  return theSrcElPosition
+}
+
+/**
+ * 某一组
+ * @class
+ * @return {ActiveElLineStore}
+ */
+function ActiveElLineStore () {
+  this.lines = new LinesOfTwoRelatedEl()
+  this.gapLines = new GapLinesOfTwoRelatedEl()
+  this.activeElPosition = null
+  this.targetElPosition = null
+  return this
+}
+
+/**
+ * 获取两元素的位置关系
+ * @returns {string}
+ */
+ActiveElLineStore.prototype.getCurrentOverlappingCase = function () {
+  const theRelatedEl = this.targetElPosition
+  const activeEl = this.activeElPosition
+  return computeOverlappingCase(activeEl, theRelatedEl)
+}
+
+/**
+ *
+ * @class
+ * @return {ActiveElMapLinesManager}
+ */
 function ActiveElMapLinesManager () {
-  this.cachedActiveEls = new Map()
+  this.cachedActiveEls = new WeakMap()
+  return this
+}
+/**
+ * 计算所有有垂直/水平投影关系的元素彼此间的间距
+ * @param {HTMLElement[]} allEls 所有元素
+ */
+ActiveElMapLinesManager.prototype.computeGapLines = function (allEls) {
+  const computeGap = (activeEl, theRelatedEl) => {
+    if (!activeEl || !theRelatedEl) {
+      return new ActiveElLineStore()
+    }
+    if (!this.cachedActiveEls.get(activeEl)) {
+      this.cachedActiveEls.set(activeEl, new WeakMap())
+    }
+    const subMap = this.cachedActiveEls.get(activeEl)
+    if (!subMap.get(theRelatedEl)) {
+      subMap.set(theRelatedEl, new ActiveElLineStore())
+    }
+    subMap.set(theRelatedEl, new ActiveElLineStore())
+    /** @constant {ActiveElLineStore} store */
+    const store = subMap.get(theRelatedEl)
+    store.activeElPosition = getElPosition(activeEl)
+    store.targetElPosition = getElPosition(theRelatedEl)
+    genGapLinesForHorizontalDir(store.activeElPosition, store.targetElPosition, store.gapLines)
+    genGapLinesForVerticalDir(store.activeElPosition, store.targetElPosition, store.gapLines)
+  }
+
+  allEls.forEach((activeEl, outIndex) => {
+    let loopCount = 1
+    while (outIndex + loopCount < allEls.length) {
+      const theRelatedEl = allEls[outIndex + loopCount]
+      computeGap(activeEl, theRelatedEl)
+      computeGap(theRelatedEl, activeEl)
+      loopCount += 1
+    }
+  })
+
+  console.log(this)
 }
 
-ActiveElMapLinesManager.prototype.computeLines = function () {
+ActiveElMapLinesManager.prototype.computeLines = function (activeEl, theRelatedEl) {
+  if (!activeEl || !theRelatedEl) {
+    return new ActiveElLineStore()
+  }
+  if (!this.cachedActiveEls.get(activeEl)) {
+    this.cachedActiveEls.set(activeEl, new WeakMap())
+  }
+  const subMap = this.cachedActiveEls.get(activeEl)
+  if (!subMap.get(theRelatedEl)) {
+    subMap.set(theRelatedEl, new ActiveElLineStore())
+  }
+  subMap.set(theRelatedEl, new ActiveElLineStore())
+  /** @constant {ActiveElLineStore} store */
+  const store = subMap.get(theRelatedEl)
+  store.activeElPosition = getElPosition(activeEl)
+  store.targetElPosition = getElPosition(theRelatedEl)
+  const overlappingCase = store.getCurrentOverlappingCase()
+  if (overlappingCase === cases.noAxisOverlapping) {
+    genLinesForNoAxisOverlapping(store.activeElPosition, store.targetElPosition, store.lines)
+  }
+  if (overlappingCase === cases.XAxisProjectionOverlapping) {
+    genLinesForXAxisProjectionOverlapping(store.activeElPosition, store.targetElPosition, store.lines)
+  }
+  if (overlappingCase === cases.YAxisProjectionOverlapping) {
+    genLinesForYAxisProjectionOverlapping(store.activeElPosition, store.targetElPosition, store.lines)
+  }
+  return store.lines
 }
 
-ActiveElMapLinesManager.prototype.getLines = function (activeEl, theRelatedEl) {
+ActiveElMapLinesManager.prototype.getLines = function (activeEl, theRelatedEl) {}
+
+const twoPointRangeSquare = (pa, pb) => {
+  return Math.pow(pb[0] - pa[0], 2) + Math.pow(pb[1] - pa[1], 2)
+}
+/**
+ * 寻找用户意向参考的元素
+ */
+const findTheIntendToRefElsInAllElsOnMoving = function (theMovingEls, allEls, option) {
+  return allEls[0]
 }
 
 export {
-  TheElPosition,
-  genLinesForNoAxisOverlapping,
-  genLinesForXAxisProjectionOverlapping,
-  genLinesForYAxisProjectionOverlapping
+  findTheIntendToRefElsInAllElsOnMoving,
+  LinesOfTwoRelatedEl,
+  ActiveElMapLinesManager
 }
