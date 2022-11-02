@@ -67,7 +67,6 @@ export default {
   methods: {
     computeRule (x, y, e) {
       const allEls = [...document.getElementsByClassName('ruleEl')]
-      findTheIntendToRefElsInAllElsOnMoving(e, allEls)
       const computeLines = lineManager.computeLines(e, allEls[0])
       lineManager.computeGapLines(allEls)
       console.log(lineManager)
