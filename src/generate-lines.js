@@ -6,7 +6,7 @@ const CASES = {
 }
 
 /**
- *
+ * 计算两元素的重叠状态
  *
  * @param {TheElPosition} activeEl
  * @param {TheElPosition} theRelatedEl
@@ -81,7 +81,7 @@ function TheElPosition ({ offsetTop, offsetLeft, offsetWidth, offsetHeight }) {
 }
 
 /**
- *
+ * 辅助线
  * @class
  * @param {{left: Number, top: Number, lineLength: Number}} params
  * @return {Line}
@@ -111,6 +111,9 @@ function LinesOfTwoRelatedEl () {
   return this
 }
 
+/**
+ * 间距线
+ */
 function GapLinesOfTwoRelatedEl () {
   /**  @type {Line[]} */
   this.gapVLine = []
@@ -556,8 +559,8 @@ const genGapLinesForVerticalDir = (
  */
 const getElPosition = (theSrcEl) => {
   const leftTop = theSrcEl.style.transform
-    ? theSrcEl.style.transform
-      .match(/^translate\((\d+)px,\s(\d+)px\)$/)
+    ? (theSrcEl.style.transform
+      .match(/^translate\((\d+)px,\s(\d+)px\)$/))
       .slice(1) || [0, 0]
     : [theSrcEl.offsetLeft, theSrcEl.offsetTop]
   const theSrcElPosition = {
@@ -570,7 +573,7 @@ const getElPosition = (theSrcEl) => {
 }
 
 /**
- * 某一组
+ * 某一个元素附属的辅助线信息
  * @class
  * @return {ActiveElLineStore}
  */
@@ -593,7 +596,7 @@ ActiveElLineStore.prototype.getCurrentOverlappingCase = function () {
 }
 
 /**
- *
+ * 存储管理
  * @class
  * @return {ActiveElMapLinesManager}
  */
@@ -601,17 +604,90 @@ function ActiveElMapLinesManager () {
   this.cachedActiveEls = new WeakMap()
   return this
 }
+
+/**
+ * 获取目标元素距离最近的间距线
+ * @param {HTMLElement} targetEl 目标元素
+ * @param {[]HTMLElement} allEls 所有元素
+ * @returns {
+ *  {
+ *    gapHLine: Line
+ *    gapVLine: Line
+ *  }
+ * }
+ */
+ActiveElMapLinesManager.prototype.getMostCloseGapLineOfEl = function (targetEl, allEls) {
+  const excludeEls = [targetEl]
+  const targetElCachedLines = this.cachedActiveEls.get(targetEl)
+  const includeEls = allEls.filter(el => !excludeEls.includes(el))
+  return includeEls.reduce((ret, el) => {
+    const curGapLines = targetElCachedLines.get(el).gapLines
+    const curGap = {
+      gapHLine: curGapLines.gapHLine[0],
+      gapVLine: curGapLines.gapVLine[0]
+    }
+    if (ret === null) {
+      return curGap
+    }
+    if (curGap.gapHLine && (!ret.gapHLine || ret.gapHLine.lineLength > curGap.gapHLine.lineLength)) {
+      ret.gapHLine = curGap.gapHLine
+    }
+    if (curGap.gapVLine && (!ret.gapVLine || ret.gapVLine.lineLength > curGap.gapVLine.lineLength)) {
+      ret.gapVLine = curGap.gapVLine
+    }
+    return ret
+  }, null)
+}
+
+/**
+ * 获取匹配距离值的间距线
+ * @param {number} gapValue 距离值
+ * @param {[]HTMLElement} allEls 所有元素
+ * @param {number} tolerance 所有元素
+ * @returns {
+ *  {
+ *    gapHLine: [],
+ *    gapVLine: []
+ *  }
+ * }
+ */
+ActiveElMapLinesManager.prototype.getMatchedGaps = function (gapValue, allEls, tolerance = 2) {
+  // 计算最近的值
+  const walked = new WeakSet()
+  const ret = {
+    gapHLine: [],
+    gapVLine: []
+  }
+  allEls.forEach((el) => {
+    const curElLines = this.cachedActiveEls.get(el)
+    walked.add(el)
+    allEls.forEach(el => {
+      if (!walked.has(el)) {
+        const lines = curElLines.get(el)
+        const HLine = lines.gapLines.gapHLine[0]
+        const VLine = lines.gapLines.gapVLine[0]
+        if (HLine && Math.abs(HLine.lineLength - gapValue) < tolerance) {
+          ret.gapHLine.push(HLine)
+        }
+        if (VLine && Math.abs(VLine.lineLength - gapValue) < tolerance) {
+          ret.gapVLine.push(VLine)
+        }
+      }
+    })
+  })
+  return ret
+}
+
 /**
  * 计算所有有垂直/水平投影关系的元素彼此间的间距
  * @param {HTMLElement[]} allEls 所有元素
  * @param {HTMLElement|undefined} theActiveEl 被移动的元素
  */
 ActiveElMapLinesManager.prototype.computeGapLines = function (
-  allEls,
-  theActiveEl
+  allEls
 ) {
   /**
-   *
+   * 计算间距线
    * @param {HTMLElement} activeEl
    * @param {HTMLElement} theRelatedEl
    * @returns
@@ -656,6 +732,12 @@ ActiveElMapLinesManager.prototype.computeGapLines = function (
   })
 }
 
+/**
+ * 计算主要辅助线
+ * @param {HTMLElement} activeEl 活动元素
+ * @param {HTMLElement} theRelatedEl 相对元素
+ * @returns
+ */
 ActiveElMapLinesManager.prototype.computeLines = function (
   activeEl,
   theRelatedEl
@@ -699,11 +781,6 @@ ActiveElMapLinesManager.prototype.computeLines = function (
   }
   return store.lines
 }
-
-ActiveElMapLinesManager.prototype.getLines = function (
-  activeEl,
-  theRelatedEl
-) {}
 
 export {
   LinesOfTwoRelatedEl,

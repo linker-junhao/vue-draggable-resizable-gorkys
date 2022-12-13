@@ -39,6 +39,12 @@
         :style="{ left: item.left + 'px', top: item.top + 'px', height: item.lineLength + 'px'}" />
       <span style="border-top: 1px dashed blue;height: 0;background-color: transparent;" class="ref-line h-line text-center" v-for="item in ruleLines.dashedHLine" :key="item.id"
         :style="{ top: item.top + 'px', left: item.left + 'px', width: item.lineLength + 'px'}" />
+      <!-- 间距线 -->
+      <span class="ref-line v-line text-center" v-for="item in gapLines.gapVLine" :key="item.id"
+        :style="{ left: item.left + 'px', top: item.top + 'px', height: item.lineLength + 'px'}" >{{item.lineLength}}</span>
+      <span class="ref-line h-line text-center" v-for="item in gapLines.gapHLine" :key="item.id"
+        :style="{ top: item.top + 'px', left: item.left + 'px', width: item.lineLength + 'px'}" >{{item.lineLength}}</span>
+      <span class="" />
     </div>
   </div>
 </template>
@@ -47,7 +53,7 @@
 import { h } from 'vue'
 import VueDraggableResizable from './components/vue-draggable-resizable'
 import './components/vue-draggable-resizable.css'
-import { ActiveElMapLinesManager, LinesOfTwoRelatedEl, findTheIntendToRefElsInAllElsOnMoving } from './generate-lines'
+import { ActiveElMapLinesManager, LinesOfTwoRelatedEl } from './generate-lines'
 
 const lineManager = new ActiveElMapLinesManager()
 
@@ -61,19 +67,35 @@ export default {
       vLine: [],
       hLine: [],
       activeEl: null,
-      ruleLines: new LinesOfTwoRelatedEl()
+      ruleLines: new LinesOfTwoRelatedEl(),
+      gapLines: {
+        gapHLine: [],
+        gapVLine: []
+      }
     }
   },
   methods: {
     computeRule (x, y, e) {
       const allEls = [...document.getElementsByClassName('ruleEl')]
-      const computeLines = lineManager.computeLines(e, allEls[0])
       lineManager.computeGapLines(allEls)
-      console.log(lineManager)
-      this.ruleLines = computeLines || this.ruleLines
+      const mostCloseGapLines = lineManager.getMostCloseGapLineOfEl(this.activeEl, allEls)
+      const gapValue = Math.min(
+        mostCloseGapLines.gapHLine ? mostCloseGapLines.gapHLine.lineLength : Infinity,
+        mostCloseGapLines.gapVLine ? mostCloseGapLines.gapVLine.lineLength : Infinity
+      )
+      if (Number.isFinite(gapValue)) {
+        const ret = lineManager.getMatchedGaps(gapValue, allEls)
+        this.gapLines.gapHLine = ret.gapHLine.filter(line => !!line)
+        this.gapLines.gapVLine = ret.gapVLine.filter(line => !!line)
+      } else {
+        this.gapLines.gapHLine = []
+        this.gapLines.gapVLine = []
+      }
     },
     onDeactivated () {
       this.activeEl = null
+      this.gapLines.gapHLine = []
+      this.gapLines.gapVLine = []
     },
     onActivated (activeEl) {
       this.activeEl = activeEl
