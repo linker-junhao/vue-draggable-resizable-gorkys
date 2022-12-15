@@ -782,7 +782,7 @@ ActiveElMapLinesManager.prototype.computeLines = function (
   return store.lines
 }
 
-export {
+export default {
   LinesOfTwoRelatedEl,
   ActiveElMapLinesManager
 }

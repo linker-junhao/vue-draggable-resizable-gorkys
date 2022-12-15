@@ -53,7 +53,9 @@
 import { h } from 'vue'
 import VueDraggableResizable from './components/vue-draggable-resizable'
 import './components/vue-draggable-resizable.css'
-import { ActiveElMapLinesManager, LinesOfTwoRelatedEl } from './generate-lines'
+import GenLine from './generate-lines'
+
+const { ActiveElMapLinesManager, LinesOfTwoRelatedEl } = GenLine
 
 const lineManager = new ActiveElMapLinesManager()
 
