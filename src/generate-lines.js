@@ -560,8 +560,8 @@ const genGapLinesForVerticalDir = (
 const getElPosition = (theSrcEl) => {
   const leftTop = theSrcEl.style.transform
     ? (theSrcEl.style.transform
-      .match(/^translate\((\d+)px,\s(\d+)px\)$/))
-      .slice(1) || [0, 0]
+      .match(/^translate\((\d+)px,\s(\d+)px\)$/) || [0, 0, 0])
+      .slice(1)
     : [theSrcEl.offsetLeft, theSrcEl.offsetTop]
   const theSrcElPosition = {
     offsetHeight: theSrcEl.offsetHeight,
